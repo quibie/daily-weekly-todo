@@ -1,0 +1,27 @@
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
+
+# Logs
+*.log
+
+# Package files (we want to ignore built packages in working directory)
+*.zip
+
+# WoW SavedVariables (user-specific)
+WTF/
