@@ -14,7 +14,7 @@ A customizable daily and weekly todo list addon for World of Warcraft retail wit
 - **Ajour**: Add this repository URL to track releases
 
 ### Manual Installation
-1. Go to the [Releases page](https://github.com/yourusername/daily-weekly-todo/releases)
+1. Go to the [Releases page](https://github.com/quibie/daily-weekly-todo/releases)
 2. Download the latest `DailyWeeklyTodo-latest.zip` file
 3. Extract to your `World of Warcraft/Interface/AddOns/` directory
 4. Restart WoW or type `/reload`
@@ -34,7 +34,7 @@ A customizable daily and weekly todo list addon for World of Warcraft retail wit
 
 If you want to modify or contribute to the addon:
 
-1. Clone this repository: `git clone https://github.com/yourusername/daily-weekly-todo.git`
+1. Clone this repository: `git clone https://github.com/quibie/daily-weekly-todo.git`
 2. Copy the addon files to your `World of Warcraft/Interface/AddOns/DailyWeeklyTodo/` directory
 3. Restart WoW or type `/reload`
 4. Enable the addon in the AddOns menu
@@ -131,7 +131,7 @@ Each release automatically:
 ## Support
 
 If you encounter any issues or have suggestions:
-- [Create an issue](https://github.com/yourusername/daily-weekly-todo/issues) on GitHub
+- [Create an issue](https://github.com/quibie/daily-weekly-todo/issues) on GitHub
 - Check existing issues for solutions
 - Submit feature requests
 
