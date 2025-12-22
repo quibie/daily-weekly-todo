@@ -90,10 +90,20 @@ git push origin v1.0.1
 
 ## Troubleshooting
 
+### "Resource not accessible by integration" Error
+This error occurs due to GitHub repository permissions. **Solution:**
+1. Go to your repository on GitHub
+2. Click **Settings** → **Actions** → **General**
+3. Scroll to **Workflow permissions**
+4. Select **Read and write permissions**
+5. Check **Allow GitHub Actions to create and approve pull requests**
+6. Click **Save**
+
 ### GitHub Actions Not Running
 - Ensure repository is public or you have Actions enabled
 - Check that the workflow file is in `.github/workflows/release.yml`
 - Verify the tag follows semver format (`v1.0.0`, not `1.0.0`)
+- Make sure GitHub Actions has write permissions (see above)
 
 ### Zip File Issues
 - Check that all .lua and .toc files are included

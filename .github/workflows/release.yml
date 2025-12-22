@@ -11,6 +11,11 @@ on:
         required: true
         default: 'v1.0.0'
 
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -56,62 +61,38 @@ jobs:
         sha256sum DailyWeeklyTodo-latest.zip >> checksums.txt
         
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.get_version.outputs.VERSION }}
-        release_name: Daily Weekly Todo ${{ steps.get_version.outputs.VERSION }}
-        body: |
-          ## Daily Weekly Todo ${{ steps.get_version.outputs.VERSION }}
-          
-          ### Installation
-          1. Download `DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip`
-          2. Extract to your `World of Warcraft/Interface/AddOns/` directory
-          3. Restart WoW or type `/reload`
-          
-          ### Compatible Addon Managers
-          - Curse/Overwolf
-          - WowUp
-          - Ajour
-          
-          ### Changes
-          See commit history for detailed changes.
-          
-          ### Checksums
-          ```
-          $(cat checksums.txt)
-          ```
-        draft: false
-        prerelease: false
+      run: |
+        VERSION="${{ steps.get_version.outputs.VERSION }}"
         
-    - name: Upload Release Asset (Versioned)
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip
-        asset_name: DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip
-        asset_content_type: application/zip
+        # Create release notes
+        cat > release_notes.md << EOF
+        ## Daily Weekly Todo ${VERSION}
         
-    - name: Upload Release Asset (Latest)
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./DailyWeeklyTodo-latest.zip
-        asset_name: DailyWeeklyTodo-latest.zip
-        asset_content_type: application/zip
+        ### Installation
+        1. Download \`DailyWeeklyTodo-${VERSION}.zip\`
+        2. Extract to your \`World of Warcraft/Interface/AddOns/\` directory
+        3. Restart WoW or type \`/reload\`
         
-    - name: Upload Checksums
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./checksums.txt
-        asset_name: checksums.txt
-        asset_content_type: text/plain
+        ### Compatible Addon Managers
+        - Curse/Overwolf
+        - WowUp
+        - Ajour
+        
+        ### Changes
+        See commit history for detailed changes.
+        
+        ### Checksums
+        \`\`\`
+        $(cat checksums.txt)
+        \`\`\`
+        EOF
+        
+        # Create release using GitHub CLI
+        gh release create "${VERSION}" \
+          --title "Daily Weekly Todo ${VERSION}" \
+          --notes-file release_notes.md \
+          "DailyWeeklyTodo-${VERSION}.zip" \
+          "DailyWeeklyTodo-latest.zip" \
+          "checksums.txt"
