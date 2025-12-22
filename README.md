@@ -1,7 +1,5 @@
 # Daily Weekly Todo - World of Warcraft Addon
 
-[![License](https://img.shields.io/github/license/quibie/daily-weekly-todo)](./LICENSE.md)
-
 A customizable daily and weekly todo list addon for World of Warcraft retail with checkbox-style completion tracking.
 
 ## Download
