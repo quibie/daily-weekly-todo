@@ -49,16 +49,11 @@ jobs:
         
         # Create the zip file
         cd package
-        zip -r ../DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip DailyWeeklyTodo/
-        cd ..
-        
-        # Create a generic latest version zip
-        cp DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip DailyWeeklyTodo-latest.zip
+        zip -r ../DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip DailyWeeklyTodo/        
         
     - name: Calculate checksums
       run: |
         sha256sum DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip > checksums.txt
-        sha256sum DailyWeeklyTodo-latest.zip >> checksums.txt
         
     - name: Create Release
       env:
@@ -94,5 +89,4 @@ jobs:
           --title "Daily Weekly Todo ${VERSION}" \
           --notes-file release_notes.md \
           "DailyWeeklyTodo-${VERSION}.zip" \
-          "DailyWeeklyTodo-latest.zip" \
           "checksums.txt"
