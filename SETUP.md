@@ -112,3 +112,5 @@ git push origin v1.0.1
 3. Share the repository URL with addon users
 4. Users can install via addon managers or direct download
 5. Update version tags for new releases - GitHub Actions handles the rest!
+
+thats so cool
