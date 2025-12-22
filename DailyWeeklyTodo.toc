@@ -1,0 +1,11 @@
+## Interface: 110002
+## Title: Daily Weekly Todo
+## Notes: Customizable daily and weekly todo list with checkboxes
+## Author: Johann Fischer
+## Version: 1.0.0
+## SavedVariables: DailyWeeklyTodoData
+## DefaultState: enabled
+
+# Core files
+Core.lua
+UI.lua
