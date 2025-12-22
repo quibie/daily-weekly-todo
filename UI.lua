@@ -433,42 +433,89 @@ function DWT:HideMainFrame()
 end
 
 function DWT:ShowAddTodoDialog()
-    StaticPopupDialogs["DWT_ADD_TODO"] = {
-        text = "Enter task text:",
-        button1 = "Add Daily",
-        button2 = "Add Weekly",
-        button3 = "Cancel",
-        hasEditBox = true,
-        timeout = 0,
-        whileDead = true,
-        hideOnEscape = true,
-        OnShow = function(self)
-            self.editBox:SetFocus()
-        end,
-        OnAccept = function(self)
-            local text = self.editBox:GetText()
+    -- Create custom dialog if not exists
+    if not self.addDialog then
+        local dialog = CreateFrame("Frame", "DWTAddTodoDialog", UIParent, "BackdropTemplate")
+        dialog:SetSize(300, 140)
+        dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
+        dialog:SetFrameStrata("DIALOG")
+        dialog:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 32,
+            insets = { left = 8, right = 8, top = 8, bottom = 8 }
+        })
+        dialog:SetBackdropColor(0, 0, 0, 1)
+        dialog:EnableMouse(true)
+        dialog:SetMovable(true)
+        dialog:RegisterForDrag("LeftButton")
+        dialog:SetScript("OnDragStart", dialog.StartMoving)
+        dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+        dialog:Hide()
+        
+        -- Title
+        local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOP", dialog, "TOP", 0, -15)
+        title:SetText("Add New Task")
+        title:SetTextColor(1, 0.82, 0)
+        
+        -- Edit box
+        local editBox = CreateFrame("EditBox", nil, dialog, "InputBoxTemplate")
+        editBox:SetSize(260, 20)
+        editBox:SetPoint("TOP", title, "BOTTOM", 0, -15)
+        editBox:SetAutoFocus(true)
+        editBox:SetScript("OnEscapePressed", function()
+            dialog:Hide()
+        end)
+        dialog.editBox = editBox
+        
+        -- Add Daily button
+        local dailyBtn = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
+        dailyBtn:SetSize(85, 25)
+        dailyBtn:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 15, 15)
+        dailyBtn:SetText("Add Daily")
+        dailyBtn:SetScript("OnClick", function()
+            local text = editBox:GetText()
             if text and text:trim() ~= "" then
-                DWT:AddDailyTodo(text)
+                DWT:AddDailyTodo(text:trim())
+                editBox:SetText("")
+                dialog:Hide()
             end
-        end,
-        OnCancel = function(self)
-            local text = self.editBox:GetText()
+        end)
+        dialog.dailyBtn = dailyBtn
+        
+        -- Add Weekly button
+        local weeklyBtn = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
+        weeklyBtn:SetSize(85, 25)
+        weeklyBtn:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 15)
+        weeklyBtn:SetText("Add Weekly")
+        weeklyBtn:SetScript("OnClick", function()
+            local text = editBox:GetText()
             if text and text:trim() ~= "" then
-                DWT:AddWeeklyTodo(text)
+                DWT:AddWeeklyTodo(text:trim())
+                editBox:SetText("")
+                dialog:Hide()
             end
-        end,
-        EditBoxOnEnterPressed = function(self)
-            local parent = self:GetParent()
-            local text = parent.editBox:GetText()
-            if text and text:trim() ~= "" then
-                DWT:AddDailyTodo(text)
-            end
-            parent:Hide()
-        end,
-        EditBoxOnEscapePressed = function(self)
-            self:GetParent():Hide()
-        end,
-    }
+        end)
+        dialog.weeklyBtn = weeklyBtn
+        
+        -- Cancel button
+        local cancelBtn = CreateFrame("Button", nil, dialog, "UIPanelButtonTemplate")
+        cancelBtn:SetSize(85, 25)
+        cancelBtn:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -15, 15)
+        cancelBtn:SetText("Cancel")
+        cancelBtn:SetScript("OnClick", function()
+            editBox:SetText("")
+            dialog:Hide()
+        end)
+        dialog.cancelBtn = cancelBtn
+        
+        self.addDialog = dialog
+    end
     
-    StaticPopup_Show("DWT_ADD_TODO")
+    self.addDialog.editBox:SetText("")
+    self.addDialog:Show()
+    self.addDialog.editBox:SetFocus()
 end
