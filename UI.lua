@@ -101,13 +101,15 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
     checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight", "ADD")
     checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
-    checkbox:SetDisabledTexture("Interface\\Buttons\\UI-CheckBox-Check-Disabled")
     checkbox:SetChecked(todo.completed)
     checkbox:SetScript("OnClick", function()
         DWT:ToggleTodo(todoType, index, characterKey)
     end)
     if not isCurrentCharacter then
         checkbox:SetEnabled(false)
+        -- Dim the checkbox for other characters
+        checkbox:SetAlpha(0.6)
+        -- Don't set disabled texture - let checked/unchecked state show correctly
     end
     row.checkbox = checkbox
     xOffset = xOffset + CHECKBOX_SIZE + 4
