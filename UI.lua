@@ -2,11 +2,273 @@ local addonName, addon = ...
 local DWT = DailyWeeklyTodo
 
 -- UI Constants
-local FRAME_WIDTH = 350
-local FRAME_HEIGHT = 500
-local CHECKBOX_SIZE = 20
-local ROW_HEIGHT = 25
+local FRAME_WIDTH = 400
+local FRAME_HEIGHT = 550
+local CHECKBOX_SIZE = 18
+local BUTTON_SIZE = 16
+local ROW_HEIGHT = 24
 local PADDING = 10
+local INDENT = 25
+
+-- Create a todo row with delete, reorder buttons, and checkbox
+function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurrentCharacter)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetSize(parent:GetWidth(), ROW_HEIGHT)
+    
+    local xOffset = 0
+    
+    -- Delete button (X) - leftmost
+    local deleteBtn = CreateFrame("Button", nil, row)
+    deleteBtn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+    deleteBtn:SetPoint("LEFT", row, "LEFT", xOffset, 0)
+    deleteBtn:SetNormalTexture("Interface\\Buttons\\UI-StopButton")
+    deleteBtn:SetHighlightTexture("Interface\\Buttons\\UI-StopButton", "ADD")
+    deleteBtn:SetScript("OnClick", function()
+        DWT:DeleteTodo(todoType, index, characterKey)
+    end)
+    deleteBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Delete Task")
+        GameTooltip:Show()
+    end)
+    deleteBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    -- Only enable delete for current character
+    if not isCurrentCharacter then
+        deleteBtn:SetAlpha(0.3)
+        deleteBtn:SetEnabled(false)
+    end
+    row.deleteBtn = deleteBtn
+    xOffset = xOffset + BUTTON_SIZE + 2
+    
+    -- Move up button
+    local upBtn = CreateFrame("Button", nil, row)
+    upBtn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+    upBtn:SetPoint("LEFT", row, "LEFT", xOffset, 0)
+    upBtn:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollUp-Up")
+    upBtn:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollUp-Down")
+    upBtn:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollUp-Highlight", "ADD")
+    upBtn:SetScript("OnClick", function()
+        DWT:MoveTodoUp(todoType, index, characterKey)
+    end)
+    upBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Move Up")
+        GameTooltip:Show()
+    end)
+    upBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    if not isCurrentCharacter then
+        upBtn:SetAlpha(0.3)
+        upBtn:SetEnabled(false)
+    end
+    row.upBtn = upBtn
+    xOffset = xOffset + BUTTON_SIZE + 1
+    
+    -- Move down button
+    local downBtn = CreateFrame("Button", nil, row)
+    downBtn:SetSize(BUTTON_SIZE, BUTTON_SIZE)
+    downBtn:SetPoint("LEFT", row, "LEFT", xOffset, 0)
+    downBtn:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+    downBtn:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
+    downBtn:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Highlight", "ADD")
+    downBtn:SetScript("OnClick", function()
+        DWT:MoveTodoDown(todoType, index, characterKey)
+    end)
+    downBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Move Down")
+        GameTooltip:Show()
+    end)
+    downBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    if not isCurrentCharacter then
+        downBtn:SetAlpha(0.3)
+        downBtn:SetEnabled(false)
+    end
+    row.downBtn = downBtn
+    xOffset = xOffset + BUTTON_SIZE + 4
+    
+    -- Checkbox
+    local checkbox = CreateFrame("CheckButton", nil, row)
+    checkbox:SetSize(CHECKBOX_SIZE, CHECKBOX_SIZE)
+    checkbox:SetPoint("LEFT", row, "LEFT", xOffset, 0)
+    checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+    checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
+    checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight", "ADD")
+    checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    checkbox:SetDisabledTexture("Interface\\Buttons\\UI-CheckBox-Check-Disabled")
+    checkbox:SetChecked(todo.completed)
+    checkbox:SetScript("OnClick", function()
+        DWT:ToggleTodo(todoType, index, characterKey)
+    end)
+    if not isCurrentCharacter then
+        checkbox:SetEnabled(false)
+    end
+    row.checkbox = checkbox
+    xOffset = xOffset + CHECKBOX_SIZE + 4
+    
+    -- Text label
+    local text = row:CreateFontString(nil, "OVERLAY")
+    text:SetFontObject("GameFontNormal")
+    text:SetPoint("LEFT", row, "LEFT", xOffset, 0)
+    text:SetPoint("RIGHT", row, "RIGHT", -5, 0)
+    text:SetJustifyH("LEFT")
+    text:SetText(todo.text)
+    text:SetWordWrap(false)
+    
+    -- Update text appearance based on completion
+    if todo.completed then
+        text:SetTextColor(0.5, 0.5, 0.5)
+    else
+        text:SetTextColor(1, 1, 1)
+    end
+    
+    row.text = text
+    return row
+end
+
+-- Create collapsible section header
+function DWT:CreateSectionHeader(parent, title, isCollapsed, onToggle, colorR, colorG, colorB, progress)
+    local header = CreateFrame("Button", nil, parent)
+    header:SetSize(parent:GetWidth(), 22)
+    
+    -- Collapse indicator
+    local indicator = header:CreateFontString(nil, "OVERLAY")
+    indicator:SetFontObject("GameFontNormal")
+    indicator:SetPoint("LEFT", header, "LEFT", 0, 0)
+    indicator:SetText(isCollapsed and "▶" or "▼")
+    indicator:SetTextColor(0.8, 0.8, 0.8)
+    header.indicator = indicator
+    
+    -- Title text
+    local titleText = header:CreateFontString(nil, "OVERLAY")
+    titleText:SetFontObject("GameFontNormalLarge")
+    titleText:SetPoint("LEFT", indicator, "RIGHT", 5, 0)
+    titleText:SetText(title)
+    titleText:SetTextColor(colorR or 1, colorG or 1, colorB or 1)
+    header.titleText = titleText
+    
+    -- Progress text
+    if progress then
+        local progressText = header:CreateFontString(nil, "OVERLAY")
+        progressText:SetFontObject("GameFontNormal")
+        progressText:SetPoint("RIGHT", header, "RIGHT", -5, 0)
+        progressText:SetText(progress)
+        progressText:SetTextColor(0.7, 0.7, 0.7)
+        header.progressText = progressText
+    end
+    
+    -- Click handler
+    header:SetScript("OnClick", onToggle)
+    header:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
+    
+    return header
+end
+
+-- Create character section with collapsible daily/weekly todos
+function DWT:CreateCharacterSection(parent, characterKey, charInfo, yOffset)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return yOffset end
+    
+    local isCurrentCharacter = charInfo.isCurrentCharacter
+    local isCollapsed = self:IsCharacterCollapsed(characterKey)
+    local r, g, b = self:GetClassColor(charInfo.class)
+    
+    -- Character header
+    local charName = charInfo.name
+    if isCurrentCharacter then
+        charName = charName .. " (Current)"
+    end
+    charName = charName .. " - " .. charInfo.realm
+    
+    local dailyCompleted, dailyTotal = self:GetCompletedCount("daily", characterKey)
+    local weeklyCompleted, weeklyTotal = self:GetCompletedCount("weekly", characterKey)
+    local totalCompleted = dailyCompleted + weeklyCompleted
+    local totalTasks = dailyTotal + weeklyTotal
+    local progress = string.format("(%d/%d)", totalCompleted, totalTasks)
+    
+    local charHeader = self:CreateSectionHeader(
+        parent, 
+        charName, 
+        isCollapsed, 
+        function() self:ToggleCharacterCollapsed(characterKey) end,
+        r, g, b,
+        progress
+    )
+    charHeader:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -yOffset)
+    charHeader:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
+    table.insert(self.uiElements, charHeader)
+    yOffset = yOffset + 24
+    
+    if isCollapsed then
+        return yOffset
+    end
+    
+    -- Daily section
+    if #charData.dailyTodos > 0 then
+        local dailyLabel = parent:CreateFontString(nil, "OVERLAY")
+        dailyLabel:SetFontObject("GameFontNormal")
+        dailyLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", INDENT, -yOffset)
+        dailyLabel:SetText("Daily")
+        dailyLabel:SetTextColor(0.9, 0.8, 0.5) -- Gold
+        table.insert(self.uiElements, dailyLabel)
+        
+        local dailyProgress = parent:CreateFontString(nil, "OVERLAY")
+        dailyProgress:SetFontObject("GameFontNormal")
+        dailyProgress:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, -yOffset)
+        dailyProgress:SetText(dailyCompleted .. "/" .. dailyTotal)
+        dailyProgress:SetTextColor(0.7, 0.7, 0.7)
+        table.insert(self.uiElements, dailyProgress)
+        
+        yOffset = yOffset + 18
+        
+        for i, todo in ipairs(charData.dailyTodos) do
+            local row = self:CreateTodoRow(parent, todo, "daily", i, characterKey, isCurrentCharacter)
+            row:SetPoint("TOPLEFT", parent, "TOPLEFT", INDENT + 5, -yOffset)
+            row:SetPoint("RIGHT", parent, "RIGHT", -10, 0)
+            table.insert(self.uiElements, row)
+            yOffset = yOffset + ROW_HEIGHT
+        end
+        
+        yOffset = yOffset + 5 -- Small gap between daily and weekly
+    end
+    
+    -- Weekly section
+    if #charData.weeklyTodos > 0 then
+        local weeklyLabel = parent:CreateFontString(nil, "OVERLAY")
+        weeklyLabel:SetFontObject("GameFontNormal")
+        weeklyLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", INDENT, -yOffset)
+        weeklyLabel:SetText("Weekly")
+        weeklyLabel:SetTextColor(0.5, 0.8, 0.9) -- Blue
+        table.insert(self.uiElements, weeklyLabel)
+        
+        local weeklyProgress = parent:CreateFontString(nil, "OVERLAY")
+        weeklyProgress:SetFontObject("GameFontNormal")
+        weeklyProgress:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, -yOffset)
+        weeklyProgress:SetText(weeklyCompleted .. "/" .. weeklyTotal)
+        weeklyProgress:SetTextColor(0.7, 0.7, 0.7)
+        table.insert(self.uiElements, weeklyProgress)
+        
+        yOffset = yOffset + 18
+        
+        for i, todo in ipairs(charData.weeklyTodos) do
+            local row = self:CreateTodoRow(parent, todo, "weekly", i, characterKey, isCurrentCharacter)
+            row:SetPoint("TOPLEFT", parent, "TOPLEFT", INDENT + 5, -yOffset)
+            row:SetPoint("RIGHT", parent, "RIGHT", -10, 0)
+            table.insert(self.uiElements, row)
+            yOffset = yOffset + ROW_HEIGHT
+        end
+    end
+    
+    -- Add separator if not last character
+    yOffset = yOffset + 10
+    
+    return yOffset
+end
 
 function DWT:CreateMainFrame()
     if self.mainFrame then
@@ -32,7 +294,7 @@ function DWT:CreateMainFrame()
     frame.title:SetPoint("CENTER", frame.TitleBg, "CENTER", 0, 0)
     frame.title:SetText("Daily & Weekly Todos")
     
-    -- Close button (already exists in BasicFrameTemplate)
+    -- Close button
     frame.CloseButton:SetScript("OnClick", function()
         self:HideMainFrame()
     end)
@@ -45,121 +307,24 @@ function DWT:CreateMainFrame()
     
     -- Create content frame
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(FRAME_WIDTH - 50, 1000) -- Height will be adjusted dynamically
+    content:SetSize(FRAME_WIDTH - 60, 1000)
     scrollFrame:SetScrollChild(content)
     frame.content = content
     
-    -- Daily section header
-    local dailyHeader = content:CreateFontString(nil, "OVERLAY")
-    dailyHeader:SetFontObject("GameFontNormalLarge")
-    dailyHeader:SetPoint("TOPLEFT", content, "TOPLEFT", PADDING, -PADDING)
-    dailyHeader:SetText("Daily Todos")
-    dailyHeader:SetTextColor(0.9, 0.8, 0.5) -- Gold color
-    frame.dailyHeader = dailyHeader
-    
-    -- Daily progress text
-    local dailyProgress = content:CreateFontString(nil, "OVERLAY")
-    dailyProgress:SetFontObject("GameFontNormal")
-    dailyProgress:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PADDING, -PADDING)
-    dailyProgress:SetText("0/0")
-    dailyProgress:SetTextColor(0.7, 0.7, 0.7)
-    frame.dailyProgress = dailyProgress
-    
-    -- Container for daily todos
-    local dailyContainer = CreateFrame("Frame", nil, content)
-    dailyContainer:SetPoint("TOPLEFT", dailyHeader, "BOTTOMLEFT", 0, -5)
-    dailyContainer:SetPoint("RIGHT", content, "RIGHT", -PADDING, 0)
-    dailyContainer:SetHeight(1)
-    frame.dailyContainer = dailyContainer
-    
-    -- Weekly section header  
-    local weeklyHeader = content:CreateFontString(nil, "OVERLAY")
-    weeklyHeader:SetFontObject("GameFontNormalLarge")
-    weeklyHeader:SetPoint("TOPLEFT", dailyContainer, "BOTTOMLEFT", 0, -20)
-    weeklyHeader:SetText("Weekly Todos")
-    weeklyHeader:SetTextColor(0.5, 0.8, 0.9) -- Blue color
-    frame.weeklyHeader = weeklyHeader
-    
-    -- Weekly progress text
-    local weeklyProgress = content:CreateFontString(nil, "OVERLAY")
-    weeklyProgress:SetFontObject("GameFontNormal")
-    weeklyProgress:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PADDING, weeklyHeader:GetTop() - content:GetTop())
-    weeklyProgress:SetText("0/0")
-    weeklyProgress:SetTextColor(0.7, 0.7, 0.7)
-    frame.weeklyProgress = weeklyProgress
-    
-    -- Container for weekly todos
-    local weeklyContainer = CreateFrame("Frame", nil, content)
-    weeklyContainer:SetPoint("TOPLEFT", weeklyHeader, "BOTTOMLEFT", 0, -5)
-    weeklyContainer:SetPoint("RIGHT", content, "RIGHT", -PADDING, 0)
-    weeklyContainer:SetHeight(1)
-    frame.weeklyContainer = weeklyContainer
-    
-    -- Add todo button
-    local addButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    addButton:SetSize(100, 25)
-    addButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", PADDING, PADDING)
-    addButton:SetText("Add Todo")
-    addButton:SetScript("OnClick", function()
-        self:ShowAddTodoDialog()
-    end)
-    frame.addButton = addButton
-    
-    -- Reset button
-    local resetButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    resetButton:SetSize(80, 25)
-    resetButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PADDING, PADDING)
-    resetButton:SetText("Reset All")
-    resetButton:SetScript("OnClick", function()
-        self:ResetTodos()
-        self:RefreshUI()
-        print("|cff00ff00Daily Weekly Todo:|r All todos reset!")
-    end)
-    frame.resetButton = resetButton
-    
     self.mainFrame = frame
+    self.uiElements = {}
     self:RefreshUI()
     return frame
 end
 
-function DWT:CreateTodoCheckbox(parent, todo, todoType, index)
-    local checkbox = CreateFrame("CheckButton", nil, parent)
-    checkbox:SetSize(CHECKBOX_SIZE, CHECKBOX_SIZE)
-    checkbox:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
-    checkbox:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down")
-    checkbox:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight", "ADD")
-    checkbox:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
-    checkbox:SetDisabledTexture("Interface\\Buttons\\UI-CheckBox-Check-Disabled")
-    
-    -- Set checked state
-    checkbox:SetChecked(todo.completed)
-    
-    -- Create text label
-    local text = checkbox:CreateFontString(nil, "OVERLAY")
-    text:SetFontObject("GameFontNormal")
-    text:SetPoint("LEFT", checkbox, "RIGHT", 5, 0)
-    text:SetText(todo.text)
-    
-    -- Update text appearance based on completion
-    if todo.completed then
-        text:SetTextColor(0.5, 0.5, 0.5)
-    else
-        text:SetTextColor(1, 1, 1)
+function DWT:ClearUIElements()
+    if self.uiElements then
+        for _, element in ipairs(self.uiElements) do
+            if element.Hide then element:Hide() end
+            if element.SetParent then element:SetParent(nil) end
+        end
     end
-    
-    -- Click handler
-    checkbox:SetScript("OnClick", function(self)
-        DWT:ToggleTodo(todoType, index)
-    end)
-    
-    -- Enable/disable checkbox based on todo enabled state
-    if not todo.enabled then
-        checkbox:SetEnabled(false)
-        text:SetTextColor(0.3, 0.3, 0.3)
-    end
-    
-    checkbox.text = text
-    return checkbox
+    self.uiElements = {}
 end
 
 function DWT:RefreshUI()
@@ -167,62 +332,33 @@ function DWT:RefreshUI()
         return
     end
     
-    -- Clear existing checkboxes
-    if self.dailyCheckboxes then
-        for _, checkbox in ipairs(self.dailyCheckboxes) do
-            checkbox:Hide()
-            checkbox:SetParent(nil)
-        end
+    -- Clear existing UI elements
+    self:ClearUIElements()
+    
+    local content = self.mainFrame.content
+    local yOffset = PADDING
+    
+    -- Get all characters
+    local characters = self:GetAllCharacters()
+    
+    -- Create sections for each character
+    for _, charInfo in ipairs(characters) do
+        yOffset = self:CreateCharacterSection(content, charInfo.key, charInfo, yOffset)
     end
     
-    if self.weeklyCheckboxes then
-        for _, checkbox in ipairs(self.weeklyCheckboxes) do
-            checkbox:Hide()
-            checkbox:SetParent(nil)
-        end
+    -- If no characters have todos, show a message
+    if yOffset <= PADDING + 10 then
+        local noTodosText = content:CreateFontString(nil, "OVERLAY")
+        noTodosText:SetFontObject("GameFontNormal")
+        noTodosText:SetPoint("TOPLEFT", content, "TOPLEFT", PADDING, -yOffset)
+        noTodosText:SetText("No todos yet. Use /dwt add to add tasks.")
+        noTodosText:SetTextColor(0.7, 0.7, 0.7)
+        table.insert(self.uiElements, noTodosText)
+        yOffset = yOffset + 30
     end
-    
-    self.dailyCheckboxes = {}
-    self.weeklyCheckboxes = {}
-    
-    -- Create daily todo checkboxes
-    local yOffset = 0
-    for i, todo in ipairs(self.db.profile.dailyTodos) do
-        if todo.enabled then
-            local checkbox = self:CreateTodoCheckbox(self.mainFrame.dailyContainer, todo, "daily", i)
-            checkbox:SetPoint("TOPLEFT", self.mainFrame.dailyContainer, "TOPLEFT", 0, -yOffset)
-            table.insert(self.dailyCheckboxes, checkbox)
-            yOffset = yOffset + ROW_HEIGHT
-        end
-    end
-    
-    -- Update daily container height
-    self.mainFrame.dailyContainer:SetHeight(math.max(yOffset, 1))
-    
-    -- Create weekly todo checkboxes
-    yOffset = 0
-    for i, todo in ipairs(self.db.profile.weeklyTodos) do
-        if todo.enabled then
-            local checkbox = self:CreateTodoCheckbox(self.mainFrame.weeklyContainer, todo, "weekly", i)
-            checkbox:SetPoint("TOPLEFT", self.mainFrame.weeklyContainer, "TOPLEFT", 0, -yOffset)
-            table.insert(self.weeklyCheckboxes, checkbox)
-            yOffset = yOffset + ROW_HEIGHT
-        end
-    end
-    
-    -- Update weekly container height
-    self.mainFrame.weeklyContainer:SetHeight(math.max(yOffset, 1))
-    
-    -- Update progress counters
-    local dailyCompleted, dailyTotal = self:GetCompletedCount("daily")
-    local weeklyCompleted, weeklyTotal = self:GetCompletedCount("weekly")
-    
-    self.mainFrame.dailyProgress:SetText(dailyCompleted .. "/" .. dailyTotal)
-    self.mainFrame.weeklyProgress:SetText(weeklyCompleted .. "/" .. weeklyTotal)
     
     -- Update content height for scrolling
-    local totalHeight = 60 + self.mainFrame.dailyContainer:GetHeight() + 40 + self.mainFrame.weeklyContainer:GetHeight() + 40
-    self.mainFrame.content:SetHeight(totalHeight)
+    content:SetHeight(math.max(yOffset + PADDING, FRAME_HEIGHT - 80))
 end
 
 function DWT:ShowMainFrame()

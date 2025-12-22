@@ -6,17 +6,13 @@ local DWT = DailyWeeklyTodo
 
 -- Default settings
 local defaults = {
+    global = {
+        characters = {}, -- Store all character data
+        collapsedCharacters = {}, -- Track which character sections are collapsed
+    },
     profile = {
-        dailyTodos = {
-            {text = "Complete 4 World Quests", completed = false, enabled = true},
-            {text = "Do Emissary Quest", completed = false, enabled = true},
-            {text = "Complete Dungeon", completed = false, enabled = true},
-        },
-        weeklyTodos = {
-            {text = "Complete Weekly Mythic+ Quest", completed = false, enabled = true},
-            {text = "Complete World Boss", completed = false, enabled = true},
-            {text = "Do 5 Mythic+ Dungeons", completed = false, enabled = true},
-        },
+        dailyTodos = {},
+        weeklyTodos = {},
         lastDailyReset = 0,
         lastWeeklyReset = 0,
         windowPosition = {
@@ -24,8 +20,8 @@ local defaults = {
             y = 100,
         },
         showOnLogin = true,
-        windowWidth = 300,
-        windowHeight = 400,
+        windowWidth = 350,
+        windowHeight = 500,
     }
 }
 
@@ -38,9 +34,31 @@ local WEEKLY_RESET_TIMES = {
     ["CN"] = {day = 3, hour = 23}, -- Wednesday 23:00 UTC (8am CST)
 }
 
+function DWT:GetCurrentCharacterKey()
+    local name = UnitName("player")
+    local realm = GetRealmName()
+    return name .. "-" .. realm
+end
+
 function DWT:OnInitialize()
     -- Initialize database
     self.db = LibStub("AceDB-3.0"):New("DailyWeeklyTodoData", defaults, true)
+    
+    -- Store character key
+    self.characterKey = self:GetCurrentCharacterKey()
+    
+    -- Initialize character data in global storage if not exists
+    if not self.db.global.characters[self.characterKey] then
+        self.db.global.characters[self.characterKey] = {
+            name = UnitName("player"),
+            realm = GetRealmName(),
+            class = select(2, UnitClass("player")),
+            dailyTodos = {},
+            weeklyTodos = {},
+            lastDailyReset = 0,
+            lastWeeklyReset = 0,
+        }
+    end
     
     -- Register slash commands
     self:RegisterChatCommand("dwt", "SlashCommand")
@@ -51,6 +69,15 @@ function DWT:OnInitialize()
     self:RegisterEvent("ADDON_LOADED")
     
     print("|cff00ff00Daily Weekly Todo|r loaded. Type /dwt to open.")
+end
+
+function DWT:GetCharacterData(characterKey)
+    characterKey = characterKey or self.characterKey
+    return self.db.global.characters[characterKey]
+end
+
+function DWT:GetCurrentCharacterData()
+    return self:GetCharacterData(self.characterKey)
 end
 
 function DWT:OnEnable()
@@ -82,12 +109,15 @@ function DWT:SlashCommand(input)
     elseif command == "reset" then
         self:ResetTodos()
         print("|cff00ff00Daily Weekly Todo:|r All todos reset!")
+    elseif command == "add" then
+        self:ShowAddTodoDialog()
     elseif command == "config" then
         print("|cff00ff00Daily Weekly Todo:|r Configuration options coming soon!")
     else
         print("|cff00ff00Daily Weekly Todo Commands:|r")
         print("/dwt show - Show the todo window")
         print("/dwt hide - Hide the todo window")
+        print("/dwt add - Add a new todo")
         print("/dwt reset - Reset all todos")
         print("/dwt config - Open configuration")
     end
@@ -176,19 +206,20 @@ end
 function DWT:CheckResets()
     local now = time()
     local serverTime = C_DateAndTime.GetServerTimeLocal()
+    local charData = self:GetCurrentCharacterData()
     
     -- Check daily reset (daily reset is at server midnight)
     local todayMidnight = serverTime - (serverTime % 86400)
-    if self.db.profile.lastDailyReset < todayMidnight then
+    if charData.lastDailyReset < todayMidnight then
         self:ResetDailyTodos()
-        self.db.profile.lastDailyReset = now
+        charData.lastDailyReset = now
     end
     
     -- Check weekly reset (region-specific)
     local lastWeeklyReset = self:GetLastWeeklyResetTime()
-    if self.db.profile.lastWeeklyReset < lastWeeklyReset then
+    if charData.lastWeeklyReset < lastWeeklyReset then
         self:ResetWeeklyTodos()
-        self.db.profile.lastWeeklyReset = now
+        charData.lastWeeklyReset = now
         
         -- Debug info
         local region = self:GetServerRegion()
@@ -196,57 +227,105 @@ function DWT:CheckResets()
     end
 end
 
-function DWT:ResetDailyTodos()
-    for i, todo in ipairs(self.db.profile.dailyTodos) do
-        if todo.enabled then
-            todo.completed = false
-        end
+function DWT:ResetDailyTodos(characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    for i, todo in ipairs(charData.dailyTodos) do
+        todo.completed = false
     end
     if self.mainFrame and self.mainFrame:IsShown() then
         self:RefreshUI()
     end
 end
 
-function DWT:ResetWeeklyTodos()
-    for i, todo in ipairs(self.db.profile.weeklyTodos) do
-        if todo.enabled then
-            todo.completed = false
-        end
+function DWT:ResetWeeklyTodos(characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    for i, todo in ipairs(charData.weeklyTodos) do
+        todo.completed = false
     end
     if self.mainFrame and self.mainFrame:IsShown() then
         self:RefreshUI()
     end
 end
 
-function DWT:ResetTodos()
-    self:ResetDailyTodos()
-    self:ResetWeeklyTodos()
+function DWT:ResetTodos(characterKey)
+    self:ResetDailyTodos(characterKey)
+    self:ResetWeeklyTodos(characterKey)
 end
 
-function DWT:AddDailyTodo(text)
-    table.insert(self.db.profile.dailyTodos, {
+function DWT:AddDailyTodo(text, characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    table.insert(charData.dailyTodos, {
         text = text,
         completed = false,
-        enabled = true
     })
     if self.mainFrame and self.mainFrame:IsShown() then
         self:RefreshUI()
     end
 end
 
-function DWT:AddWeeklyTodo(text)
-    table.insert(self.db.profile.weeklyTodos, {
+function DWT:AddWeeklyTodo(text, characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    table.insert(charData.weeklyTodos, {
         text = text,
         completed = false,
-        enabled = true
     })
     if self.mainFrame and self.mainFrame:IsShown() then
         self:RefreshUI()
     end
 end
 
-function DWT:ToggleTodo(todoType, index)
-    local todoList = todoType == "daily" and self.db.profile.dailyTodos or self.db.profile.weeklyTodos
+function DWT:DeleteTodo(todoType, index, characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    local todoList = todoType == "daily" and charData.dailyTodos or charData.weeklyTodos
+    if todoList[index] then
+        table.remove(todoList, index)
+        if self.mainFrame and self.mainFrame:IsShown() then
+            self:RefreshUI()
+        end
+    end
+end
+
+function DWT:MoveTodoUp(todoType, index, characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    local todoList = todoType == "daily" and charData.dailyTodos or charData.weeklyTodos
+    if index > 1 and todoList[index] then
+        todoList[index], todoList[index - 1] = todoList[index - 1], todoList[index]
+        if self.mainFrame and self.mainFrame:IsShown() then
+            self:RefreshUI()
+        end
+    end
+end
+
+function DWT:MoveTodoDown(todoType, index, characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    local todoList = todoType == "daily" and charData.dailyTodos or charData.weeklyTodos
+    if index < #todoList and todoList[index] then
+        todoList[index], todoList[index + 1] = todoList[index + 1], todoList[index]
+        if self.mainFrame and self.mainFrame:IsShown() then
+            self:RefreshUI()
+        end
+    end
+end
+
+function DWT:ToggleTodo(todoType, index, characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return end
+    
+    local todoList = todoType == "daily" and charData.dailyTodos or charData.weeklyTodos
     if todoList[index] then
         todoList[index].completed = not todoList[index].completed
         if self.mainFrame and self.mainFrame:IsShown() then
@@ -255,20 +334,66 @@ function DWT:ToggleTodo(todoType, index)
     end
 end
 
+function DWT:ToggleCharacterCollapsed(characterKey)
+    if self.db.global.collapsedCharacters[characterKey] then
+        self.db.global.collapsedCharacters[characterKey] = nil
+    else
+        self.db.global.collapsedCharacters[characterKey] = true
+    end
+    if self.mainFrame and self.mainFrame:IsShown() then
+        self:RefreshUI()
+    end
+end
+
+function DWT:IsCharacterCollapsed(characterKey)
+    return self.db.global.collapsedCharacters[characterKey] == true
+end
+
+-- Get all characters
+function DWT:GetAllCharacters()
+    local characters = {}
+    for key, data in pairs(self.db.global.characters) do
+        table.insert(characters, {
+            key = key,
+            name = data.name,
+            realm = data.realm,
+            class = data.class,
+            isCurrentCharacter = (key == self.characterKey)
+        })
+    end
+    -- Sort: current character first, then alphabetically
+    table.sort(characters, function(a, b)
+        if a.isCurrentCharacter then return true end
+        if b.isCurrentCharacter then return false end
+        return a.key < b.key
+    end)
+    return characters
+end
+
 -- Utility functions
-function DWT:GetCompletedCount(todoType)
-    local todoList = todoType == "daily" and self.db.profile.dailyTodos or self.db.profile.weeklyTodos
+function DWT:GetCompletedCount(todoType, characterKey)
+    local charData = self:GetCharacterData(characterKey)
+    if not charData then return 0, 0 end
+    
+    local todoList = todoType == "daily" and charData.dailyTodos or charData.weeklyTodos
     local completed = 0
     local total = 0
     
     for _, todo in ipairs(todoList) do
-        if todo.enabled then
-            total = total + 1
-            if todo.completed then
-                completed = completed + 1
-            end
+        total = total + 1
+        if todo.completed then
+            completed = completed + 1
         end
     end
     
     return completed, total
+end
+
+-- Get class color
+function DWT:GetClassColor(class)
+    if class and RAID_CLASS_COLORS[class] then
+        local color = RAID_CLASS_COLORS[class]
+        return color.r, color.g, color.b
+    end
+    return 1, 1, 1
 end
