@@ -5,9 +5,9 @@ A customizable daily and weekly todo list addon for World of Warcraft retail wit
 ## Download
 
 ### Automatic Installation (Recommended)
-- **Curse/Overwolf**: Search for "Daily Weekly Todo" in the app
-- **WowUp**: Search for "Daily Weekly Todo" in the app
-- **Ajour**: Add this repository URL to track releases
+- **WowUp**: enter the github url into the addon URL window
+only tested on WowUp app
+
 
 ### Manual Installation
 1. Go to the [Releases page](https://github.com/quibie/daily-weekly-todo/releases)
