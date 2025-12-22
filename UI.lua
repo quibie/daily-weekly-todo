@@ -2,8 +2,10 @@ local addonName, addon = ...
 local DWT = DailyWeeklyTodo
 
 -- UI Constants
-local FRAME_WIDTH = 400
-local FRAME_HEIGHT = 550
+local FRAME_WIDTH = 380
+local FRAME_HEIGHT = 500
+local HEADER_HEIGHT = 30
+local FOOTER_HEIGHT = 35
 local CHECKBOX_SIZE = 18
 local BUTTON_SIZE = 16
 local ROW_HEIGHT = 24
@@ -13,7 +15,7 @@ local INDENT = 25
 -- Create a todo row with delete, reorder buttons, and checkbox
 function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurrentCharacter)
     local row = CreateFrame("Frame", nil, parent)
-    row:SetSize(parent:GetWidth(), ROW_HEIGHT)
+    row:SetHeight(ROW_HEIGHT)
     
     local xOffset = 0
     
@@ -34,7 +36,6 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     deleteBtn:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-    -- Only enable delete for current character
     if not isCurrentCharacter then
         deleteBtn:SetAlpha(0.3)
         deleteBtn:SetEnabled(false)
@@ -112,15 +113,13 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     xOffset = xOffset + CHECKBOX_SIZE + 4
     
     -- Text label
-    local text = row:CreateFontString(nil, "OVERLAY")
-    text:SetFontObject("GameFontNormal")
+    local text = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     text:SetPoint("LEFT", row, "LEFT", xOffset, 0)
     text:SetPoint("RIGHT", row, "RIGHT", -5, 0)
     text:SetJustifyH("LEFT")
     text:SetText(todo.text)
     text:SetWordWrap(false)
     
-    -- Update text appearance based on completion
     if todo.completed then
         text:SetTextColor(0.5, 0.5, 0.5)
     else
@@ -134,19 +133,17 @@ end
 -- Create collapsible section header
 function DWT:CreateSectionHeader(parent, title, isCollapsed, onToggle, colorR, colorG, colorB, progress)
     local header = CreateFrame("Button", nil, parent)
-    header:SetSize(parent:GetWidth(), 22)
+    header:SetHeight(22)
     
     -- Collapse indicator
-    local indicator = header:CreateFontString(nil, "OVERLAY")
-    indicator:SetFontObject("GameFontNormal")
+    local indicator = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     indicator:SetPoint("LEFT", header, "LEFT", 0, 0)
-    indicator:SetText(isCollapsed and "▶" or "▼")
+    indicator:SetText(isCollapsed and "+" or "-")
     indicator:SetTextColor(0.8, 0.8, 0.8)
     header.indicator = indicator
     
     -- Title text
-    local titleText = header:CreateFontString(nil, "OVERLAY")
-    titleText:SetFontObject("GameFontNormalLarge")
+    local titleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     titleText:SetPoint("LEFT", indicator, "RIGHT", 5, 0)
     titleText:SetText(title)
     titleText:SetTextColor(colorR or 1, colorG or 1, colorB or 1)
@@ -154,22 +151,20 @@ function DWT:CreateSectionHeader(parent, title, isCollapsed, onToggle, colorR, c
     
     -- Progress text
     if progress then
-        local progressText = header:CreateFontString(nil, "OVERLAY")
-        progressText:SetFontObject("GameFontNormal")
+        local progressText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         progressText:SetPoint("RIGHT", header, "RIGHT", -5, 0)
         progressText:SetText(progress)
         progressText:SetTextColor(0.7, 0.7, 0.7)
         header.progressText = progressText
     end
     
-    -- Click handler
     header:SetScript("OnClick", onToggle)
     header:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestLogTitleHighlight", "ADD")
     
     return header
 end
 
--- Create character section with collapsible daily/weekly todos
+-- Create character section
 function DWT:CreateCharacterSection(parent, characterKey, charInfo, yOffset)
     local charData = self:GetCharacterData(characterKey)
     if not charData then return yOffset end
@@ -178,10 +173,9 @@ function DWT:CreateCharacterSection(parent, characterKey, charInfo, yOffset)
     local isCollapsed = self:IsCharacterCollapsed(characterKey)
     local r, g, b = self:GetClassColor(charInfo.class)
     
-    -- Character header
     local charName = charInfo.name
     if isCurrentCharacter then
-        charName = charName .. " (Current)"
+        charName = charName .. " (You)"
     end
     charName = charName .. " - " .. charInfo.realm
     
@@ -210,15 +204,13 @@ function DWT:CreateCharacterSection(parent, characterKey, charInfo, yOffset)
     
     -- Daily section
     if #charData.dailyTodos > 0 then
-        local dailyLabel = parent:CreateFontString(nil, "OVERLAY")
-        dailyLabel:SetFontObject("GameFontNormal")
+        local dailyLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         dailyLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", INDENT, -yOffset)
         dailyLabel:SetText("Daily")
-        dailyLabel:SetTextColor(0.9, 0.8, 0.5) -- Gold
+        dailyLabel:SetTextColor(0.9, 0.8, 0.5)
         table.insert(self.uiElements, dailyLabel)
         
-        local dailyProgress = parent:CreateFontString(nil, "OVERLAY")
-        dailyProgress:SetFontObject("GameFontNormal")
+        local dailyProgress = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         dailyProgress:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, -yOffset)
         dailyProgress:SetText(dailyCompleted .. "/" .. dailyTotal)
         dailyProgress:SetTextColor(0.7, 0.7, 0.7)
@@ -234,20 +226,18 @@ function DWT:CreateCharacterSection(parent, characterKey, charInfo, yOffset)
             yOffset = yOffset + ROW_HEIGHT
         end
         
-        yOffset = yOffset + 5 -- Small gap between daily and weekly
+        yOffset = yOffset + 5
     end
     
     -- Weekly section
     if #charData.weeklyTodos > 0 then
-        local weeklyLabel = parent:CreateFontString(nil, "OVERLAY")
-        weeklyLabel:SetFontObject("GameFontNormal")
+        local weeklyLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         weeklyLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", INDENT, -yOffset)
         weeklyLabel:SetText("Weekly")
-        weeklyLabel:SetTextColor(0.5, 0.8, 0.9) -- Blue
+        weeklyLabel:SetTextColor(0.5, 0.8, 0.9)
         table.insert(self.uiElements, weeklyLabel)
         
-        local weeklyProgress = parent:CreateFontString(nil, "OVERLAY")
-        weeklyProgress:SetFontObject("GameFontNormal")
+        local weeklyProgress = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         weeklyProgress:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, -yOffset)
         weeklyProgress:SetText(weeklyCompleted .. "/" .. weeklyTotal)
         weeklyProgress:SetTextColor(0.7, 0.7, 0.7)
@@ -264,7 +254,6 @@ function DWT:CreateCharacterSection(parent, characterKey, charInfo, yOffset)
         end
     end
     
-    -- Add separator if not last character
     yOffset = yOffset + 10
     
     return yOffset
@@ -275,8 +264,8 @@ function DWT:CreateMainFrame()
         return self.mainFrame
     end
     
-    -- Create main frame
-    local frame = CreateFrame("Frame", "DailyWeeklyTodoMainFrame", UIParent, "BasicFrameTemplateWithInset")
+    -- Main frame with simple dark background
+    local frame = CreateFrame("Frame", "DailyWeeklyTodoMainFrame", UIParent, "BackdropTemplate")
     frame:SetSize(FRAME_WIDTH, FRAME_HEIGHT)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("HIGH")
@@ -286,30 +275,83 @@ function DWT:CreateMainFrame()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 32,
+        edgeSize = 32,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 }
+    })
+    frame:SetBackdropColor(0, 0, 0, 0.9)
     frame:Hide()
     
+    -- Header bar
+    local header = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    header:SetHeight(HEADER_HEIGHT)
+    header:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -8)
+    header:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
+    header:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = nil,
+    })
+    header:SetBackdropColor(0.1, 0.1, 0.1, 1)
+    frame.header = header
+    
     -- Title
-    frame.title = frame:CreateFontString(nil, "OVERLAY")
-    frame.title:SetFontObject("GameFontHighlightLarge")
-    frame.title:SetPoint("CENTER", frame.TitleBg, "CENTER", 0, 0)
-    frame.title:SetText("Daily & Weekly Todos")
+    local title = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("LEFT", header, "LEFT", 10, 0)
+    title:SetText("Daily & Weekly Todos")
+    title:SetTextColor(1, 0.82, 0)
+    frame.title = title
     
     -- Close button
-    frame.CloseButton:SetScript("OnClick", function()
+    local closeBtn = CreateFrame("Button", nil, header, "UIPanelCloseButton")
+    closeBtn:SetPoint("RIGHT", header, "RIGHT", 0, 0)
+    closeBtn:SetScript("OnClick", function()
         self:HideMainFrame()
     end)
+    frame.closeBtn = closeBtn
     
-    -- Create scroll frame for todos
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", 4, -4)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame.Inset, "BOTTOMRIGHT", -23, 4)
+    -- Scroll frame area
+    local scrollParent = CreateFrame("Frame", nil, frame)
+    scrollParent:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -5)
+    scrollParent:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, FOOTER_HEIGHT + 8)
+    frame.scrollParent = scrollParent
+    
+    -- Scroll frame
+    local scrollFrame = CreateFrame("ScrollFrame", nil, scrollParent, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", scrollParent, "TOPLEFT", 5, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", scrollParent, "BOTTOMRIGHT", -25, 0)
     frame.scrollFrame = scrollFrame
     
-    -- Create content frame
+    -- Content frame
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(FRAME_WIDTH - 60, 1000)
+    content:SetWidth(FRAME_WIDTH - 60)
+    content:SetHeight(1)
     scrollFrame:SetScrollChild(content)
     frame.content = content
+    
+    -- Footer bar with Add button
+    local footer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    footer:SetHeight(FOOTER_HEIGHT)
+    footer:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 8)
+    footer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
+    footer:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    })
+    footer:SetBackdropColor(0.1, 0.1, 0.1, 1)
+    frame.footer = footer
+    
+    -- Add Task button
+    local addBtn = CreateFrame("Button", nil, footer, "UIPanelButtonTemplate")
+    addBtn:SetSize(100, 24)
+    addBtn:SetPoint("CENTER", footer, "CENTER", 0, 0)
+    addBtn:SetText("Add Task")
+    addBtn:SetScript("OnClick", function()
+        self:ShowAddTodoDialog()
+    end)
+    frame.addBtn = addBtn
     
     self.mainFrame = frame
     self.uiElements = {}
@@ -332,33 +374,47 @@ function DWT:RefreshUI()
         return
     end
     
-    -- Clear existing UI elements
     self:ClearUIElements()
     
     local content = self.mainFrame.content
     local yOffset = PADDING
     
-    -- Get all characters
     local characters = self:GetAllCharacters()
     
-    -- Create sections for each character
-    for _, charInfo in ipairs(characters) do
-        yOffset = self:CreateCharacterSection(content, charInfo.key, charInfo, yOffset)
+    -- Show message if no characters
+    if #characters == 0 then
+        local noCharsText = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        noCharsText:SetPoint("TOPLEFT", content, "TOPLEFT", PADDING, -yOffset)
+        noCharsText:SetText("No character data yet. Reload your UI.")
+        noCharsText:SetTextColor(0.7, 0.7, 0.7)
+        table.insert(self.uiElements, noCharsText)
+        yOffset = yOffset + 30
+    else
+        for _, charInfo in ipairs(characters) do
+            yOffset = self:CreateCharacterSection(content, charInfo.key, charInfo, yOffset)
+        end
     end
     
-    -- If no characters have todos, show a message
-    if yOffset <= PADDING + 10 then
-        local noTodosText = content:CreateFontString(nil, "OVERLAY")
-        noTodosText:SetFontObject("GameFontNormal")
+    -- Check if any character has todos
+    local hasTodos = false
+    for _, charInfo in ipairs(characters) do
+        local charData = self:GetCharacterData(charInfo.key)
+        if charData and (#charData.dailyTodos > 0 or #charData.weeklyTodos > 0) then
+            hasTodos = true
+            break
+        end
+    end
+    
+    if not hasTodos and #characters > 0 then
+        local noTodosText = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         noTodosText:SetPoint("TOPLEFT", content, "TOPLEFT", PADDING, -yOffset)
-        noTodosText:SetText("No todos yet. Use /dwt add to add tasks.")
+        noTodosText:SetText("No tasks yet. Click 'Add Task' below!")
         noTodosText:SetTextColor(0.7, 0.7, 0.7)
         table.insert(self.uiElements, noTodosText)
         yOffset = yOffset + 30
     end
     
-    -- Update content height for scrolling
-    content:SetHeight(math.max(yOffset + PADDING, FRAME_HEIGHT - 80))
+    content:SetHeight(math.max(yOffset + PADDING, 100))
 end
 
 function DWT:ShowMainFrame()
@@ -377,9 +433,8 @@ function DWT:HideMainFrame()
 end
 
 function DWT:ShowAddTodoDialog()
-    -- Simple input dialog for adding todos
     StaticPopupDialogs["DWT_ADD_TODO"] = {
-        text = "Enter todo text:",
+        text = "Enter task text:",
         button1 = "Add Daily",
         button2 = "Add Weekly",
         button3 = "Cancel",
@@ -387,6 +442,9 @@ function DWT:ShowAddTodoDialog()
         timeout = 0,
         whileDead = true,
         hideOnEscape = true,
+        OnShow = function(self)
+            self.editBox:SetFocus()
+        end,
         OnAccept = function(self)
             local text = self.editBox:GetText()
             if text and text:trim() ~= "" then
