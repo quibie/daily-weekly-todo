@@ -55,20 +55,6 @@ If you want to modify or contribute to the addon:
 - **Progress**: View completion progress (e.g., "2/5") next to each section header
 - **Draggable**: Click and drag the title bar to move the window
 
-### Default Todos
-
-The addon comes with sample todos:
-
-**Daily:**
-- Complete 4 World Quests
-- Do Emissary Quest  
-- Complete Dungeon
-
-**Weekly:**
-- Complete Weekly Mythic+ Quest
-- Complete World Boss
-- Do 5 Mythic+ Dungeons
-
 ### Reset Times
 
 - **Daily**: Resets at server midnight
