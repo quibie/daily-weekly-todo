@@ -47,9 +47,14 @@ jobs:
         # Copy addon files (exclude .github and other non-addon files)
         cp *.toc *.lua package/DailyWeeklyTodo/
         
+        # Copy Libs folder if it exists
+        if [ -d "Libs" ]; then
+          cp -r Libs package/DailyWeeklyTodo/
+        fi
+        
         # Create the zip file
         cd package
-        zip -r ../DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip DailyWeeklyTodo/        
+        zip -r ../DailyWeeklyTodo-${{ steps.get_version.outputs.VERSION }}.zip DailyWeeklyTodo/
         
     - name: Calculate checksums
       run: |
