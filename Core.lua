@@ -349,17 +349,23 @@ function DWT:IsCharacterCollapsed(characterKey)
     return self.db.global.collapsedCharacters[characterKey] == true
 end
 
--- Get all characters
+-- Get all characters (only those with at least one task)
 function DWT:GetAllCharacters()
     local characters = {}
     for key, data in pairs(self.db.global.characters) do
-        table.insert(characters, {
-            key = key,
-            name = data.name,
-            realm = data.realm,
-            class = data.class,
-            isCurrentCharacter = (key == self.characterKey)
-        })
+        -- Only include characters that have at least one task
+        local hasTasks = (data.dailyTodos and #data.dailyTodos > 0) or
+                         (data.weeklyTodos and #data.weeklyTodos > 0)
+        
+        if hasTasks then
+            table.insert(characters, {
+                key = key,
+                name = data.name,
+                realm = data.realm,
+                class = data.class,
+                isCurrentCharacter = (key == self.characterKey)
+            })
+        end
     end
     -- Sort: current character first, then alphabetically
     table.sort(characters, function(a, b)
