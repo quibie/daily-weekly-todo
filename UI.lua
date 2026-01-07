@@ -17,6 +17,9 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(ROW_HEIGHT)
     
+    -- Check if editing is allowed for this character
+    local canEdit = isCurrentCharacter or DWT:IsCrossCharacterEditEnabled()
+    
     local xOffset = 0
     
     -- Delete button (X) - leftmost
@@ -36,7 +39,7 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     deleteBtn:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-    if not isCurrentCharacter then
+    if not canEdit then
         deleteBtn:SetAlpha(0.3)
         deleteBtn:SetEnabled(false)
     end
@@ -61,7 +64,7 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     upBtn:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-    if not isCurrentCharacter then
+    if not canEdit then
         upBtn:SetAlpha(0.3)
         upBtn:SetEnabled(false)
     end
@@ -86,7 +89,7 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     downBtn:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-    if not isCurrentCharacter then
+    if not canEdit then
         downBtn:SetAlpha(0.3)
         downBtn:SetEnabled(false)
     end
@@ -105,9 +108,9 @@ function DWT:CreateTodoRow(parent, todo, todoType, index, characterKey, isCurren
     checkbox:SetScript("OnClick", function()
         DWT:ToggleTodo(todoType, index, characterKey)
     end)
-    if not isCurrentCharacter then
+    if not canEdit then
         checkbox:SetEnabled(false)
-        -- Dim the checkbox for other characters
+        -- Dim the checkbox for other characters when cross-edit is disabled
         checkbox:SetAlpha(0.6)
         -- Don't set disabled texture - let checked/unchecked state show correctly
     end

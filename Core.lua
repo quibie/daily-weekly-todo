@@ -9,6 +9,7 @@ local defaults = {
     global = {
         characters = {}, -- Store all character data
         collapsedCharacters = {}, -- Track which character sections are collapsed
+        allowCrossCharacterEdit = false, -- Allow checking todos from other characters
     },
     profile = {
         dailyTodos = {},
@@ -111,16 +112,33 @@ function DWT:SlashCommand(input)
         print("|cff00ff00Daily Weekly Todo:|r All todos reset!")
     elseif command == "add" then
         self:ShowAddTodoDialog()
+    elseif command == "crossedit" then
+        self:ToggleCrossCharacterEdit()
     elseif command == "config" then
-        print("|cff00ff00Daily Weekly Todo:|r Configuration options coming soon!")
+        print("|cff00ff00Daily Weekly Todo:|r Configuration options:")
+        print("  /dwt crossedit - Toggle cross-character editing")
     else
         print("|cff00ff00Daily Weekly Todo Commands:|r")
         print("/dwt show - Show the todo window")
         print("/dwt hide - Hide the todo window")
         print("/dwt add - Add a new todo")
         print("/dwt reset - Reset all todos")
-        print("/dwt config - Open configuration")
+        print("/dwt crossedit - Toggle cross-character editing")
+        print("/dwt config - Show configuration options")
     end
+end
+
+function DWT:ToggleCrossCharacterEdit()
+    self.db.global.allowCrossCharacterEdit = not self.db.global.allowCrossCharacterEdit
+    local status = self.db.global.allowCrossCharacterEdit and "|cff00ff00enabled|r" or "|cffff0000disabled|r"
+    print("|cff00ff00Daily Weekly Todo:|r Cross-character editing " .. status)
+    if self.mainFrame and self.mainFrame:IsShown() then
+        self:RefreshUI()
+    end
+end
+
+function DWT:IsCrossCharacterEditEnabled()
+    return self.db.global.allowCrossCharacterEdit == true
 end
 
 function DWT:GetServerRegion()
