@@ -1,4 +1,4 @@
-## Interface: 110002
+## Interface: 120000
 ## Title: Daily Weekly Todo
 ## Notes: Customizable daily and weekly todo list with checkboxes
 ## Author: Johann Fischer
